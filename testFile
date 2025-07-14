@@ -299,9 +299,9 @@ class Bond {
 class BoundaryBox {
   public:
     BoundaryBox() {
-      testBox();
+      //testBox();
       //glassFormBox();
-      //atomDefinedBox(1000);
+      atomDefinedBox(1000);
       this->boxVolume = (xHigh - xLow) * (yHigh - yLow) * (zHigh - zLow);
     }
 
@@ -478,7 +478,7 @@ class BoundaryBox {
 
     void atomDefinedBox(double atomNum) {
       double atomVolume = 4.0/3.0 * pi * pow(1.70 * angstromToMeter, 3);
-      double boxVolume = atomNum * atomVolume;
+      double boxVolume = atomNum * atomVolume / 0.60;
       double boxSide = cbrt(boxVolume);
       xHigh = boxSide;
       xLow = 0;
