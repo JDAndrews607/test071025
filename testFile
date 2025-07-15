@@ -298,10 +298,10 @@ class Bond {
 
 class BoundaryBox {
   public:
-    BoundaryBox() {
+    BoundaryBox(string ingredients) {
       //testBox();
       //glassFormBox();
-      atomDefinedBox(1000);
+      atomDefinedBox(1000, ingredients);
       this->boxVolume = (xHigh - xLow) * (yHigh - yLow) * (zHigh - zLow);
     }
 
@@ -476,10 +476,44 @@ class BoundaryBox {
       zHigh = 1.0 * nanometerToMeter;
     }
 
-    void atomDefinedBox(double atomNum) {
-      double atomVolume = 4.0/3.0 * pi * pow(1.70 * angstromToMeter, 3);
-      double boxVolume = atomNum * atomVolume / 0.60;
-      double boxSide = cbrt(boxVolume);
+    void atomDefinedBox(int atomNum, string ingredients) {
+      //parsing ingredients
+      vector<string> ingredientHold;
+      stringstream ss(ingredients);
+      string token;
+      while (getline(ss, token, ' ')) {
+        if (!token.empty()) {
+          ingredientHold.push_back(token);
+        }
+      }
+      //placing species and proportions in vectors
+      vector<string> species;
+      vector<float> proportions;
+      for (int i = 0; i < ingredientHold.size(); i++) {
+        if (i%2 == 0) {
+          cout << ingredientHold[i] << " : " << ingredientHold[i+1] << endl;
+          species.push_back(ingredientHold[i]);
+          proportions.push_back(stof(ingredientHold[i+1]));
+        }
+      }
+      float proportionSum = 0;
+      for (int i = 0; i < proportions.size(); i++) {
+        proportionSum += proportions[i];
+      }
+      for (int j = 0; j < proportions.size(); j++) {  //normalizes proportion vector
+        proportions[j] /= proportionSum;
+      }
+      //calculating volumes from atom proportions
+      double avgAtomVolume = 0;
+      double atomVolume = 0;
+      for(int n = 0; n < species.size(); n++) {
+        Atom testAtom(species[n], 0, 0, 0);
+        atomVolume = 4.0/3.0 * pi * pow(testAtom.getVdWRadius() * angstromToMeter, 3);
+        avgAtomVolume += atomVolume * proportions[n];
+      }
+
+      double boxVolume = atomNum * avgAtomVolume / 0.60;
+      double boxSide = cbrt(boxVolume) * meterToAngstrom;
       xHigh = boxSide;
       xLow = 0;
       yHigh = boxSide;
@@ -730,13 +764,13 @@ void runMD_VelocityHalfStep(vector<Atom>& atoms, BoundaryBox& BoundaryBox, doubl
   int degOfFreedom = 3 * atoms.size();
   double timeConstant = 0; //Q, couple with dt
   if(BoundaryBox.getNumberOfAtoms() < 100) {
-    timeConstant = 5e-11;
+    timeConstant = 5e-9;
   }
   else if(BoundaryBox.getNumberOfAtoms() < 1000) {
-    timeConstant = 1e-12;
+    timeConstant = 5e-10;
   }
   else {
-    timeConstant = 1e-13;
+    timeConstant = 5e-11;
   }
   cout << "Time Constant: " << timeConstant << endl;
   double thermMass = degOfFreedom * kB * systemTemp * timeConstant * timeConstant;
@@ -745,7 +779,7 @@ void runMD_VelocityHalfStep(vector<Atom>& atoms, BoundaryBox& BoundaryBox, doubl
   //updating thermostat
 
   double kineticEnergy = calculateKineticEnergy(atoms);
-  thermostatVar += (dt / (2.0 * thermMass)) * (2.0 * kineticEnergy - degOfFreedom * kB * systemTemp);
+  //thermostatVar += (dt / (2.0 * thermMass)) * (2.0 * kineticEnergy - degOfFreedom * kB * systemTemp);
 
   //writing initial coordinates to file
   outFile << "Coordinates after first kick" << endl;
@@ -780,9 +814,11 @@ void runMD_VelocityHalfStep(vector<Atom>& atoms, BoundaryBox& BoundaryBox, doubl
     updateVelocitiesMD(atoms, 0.5, dt, systemTemp);
 
     //updating thermostat
-    kineticEnergy = calculateKineticEnergy(atoms);
-    thermostatVar += (dt / (2.0 * thermMass)) * (2.0 * kineticEnergy - degOfFreedom * kB * systemTemp);
-
+    if(count > 0) {
+      kineticEnergy = calculateKineticEnergy(atoms);
+      thermostatVar += (dt / (2.0 * thermMass)) * (2.0 * kineticEnergy - degOfFreedom * kB * systemTemp);
+    }
+    
     //updating velocities for half step kick. Set at half step with dt = 0.5
     calculateAccelerationsMD(atoms, thermostatVar);
     updateVelocitiesMD(atoms, 0.5, dt, systemTemp);
@@ -899,8 +935,8 @@ void calculateForcesMD(vector<Atom>& atoms) {
       totalForceVector[1] = coulombicForceVector[1] + buckinghamForce[1];
       totalForceVector[2] = coulombicForceVector[2] + buckinghamForce[2];
       double forceMagnitude = vectorMagnitude(totalForceVector);
-      if(forceMagnitude > 1e5) {
-        double scale = 1e5 / forceMagnitude;
+      if(forceMagnitude > 1e3) {
+        double scale = 1e3 / forceMagnitude;
         totalForceVector = scalarOperations(totalForceVector, scale, '*');
       }
       atoms[i].force[0] += totalForceVector[0];
@@ -930,8 +966,8 @@ int main() {
   cout << scientific;   //sets scientific notation for all numbers
   cout << setprecision(6) << endl;  //will use six decimal places for all numbers
 
-  BoundaryBox testBox = BoundaryBox();
   string ingredients = "Si 0.33 O 0.66 Li 0.01";
+  BoundaryBox testBox = BoundaryBox(ingredients);
   vector<Atom> atoms = testBox.fillBox(ingredients);
   runMD_VelocityHalfStep(atoms, testBox, 1e-15, 100);
 
