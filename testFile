@@ -896,8 +896,8 @@ void calculateForcesMD(vector<Atom>& atoms) {
       //calculating coulombic forces
       vector<double> distanceAsVector = coordinateOperations(atoms[i], atoms[j], '-');
       double distance = calculateDistance(atoms[i], atoms[j]);
-      if (fabs(distance) < 1e-6) {
-        distance = 1e-6;
+      if (fabs(distance) < 0.1 * meterToAngstrom) {
+        distance = 0.1 * meterToAngstrom;
       }
       double coulombicForce = coulombConstant * (atoms[i].getCharge() * atoms[j].getCharge()) / (distance * distance);
       vector<double> coulombicForceVector = scalarOperations(scalarOperations(distanceAsVector, distance, '/'), coulombicForce, '*');
@@ -908,7 +908,7 @@ void calculateForcesMD(vector<Atom>& atoms) {
       double buckC = 0;
       double buckMagnitude = 0;
       vector<double> normalizedDistance = {0, 0, 0};
-      if (distance < 1e-2 * angstromToMeter) {
+      if (distance < 10.0 * meterToAngstrom) {  //buckinham cutoff
         vector<double> buckinghamParameters = getBuckinghamParameters(atoms[i], atoms[j]);
         if (buckinghamParameters[1] != 0) { //prevents division by zero
           buckA = buckinghamParameters[0];
@@ -935,8 +935,8 @@ void calculateForcesMD(vector<Atom>& atoms) {
       totalForceVector[1] = coulombicForceVector[1] + buckinghamForce[1];
       totalForceVector[2] = coulombicForceVector[2] + buckinghamForce[2];
       double forceMagnitude = vectorMagnitude(totalForceVector);
-      if(forceMagnitude > 1e3) {
-        double scale = 1e3 / forceMagnitude;
+      if(forceMagnitude > 1e-9) {
+        double scale = 1e-9 / forceMagnitude;
         totalForceVector = scalarOperations(totalForceVector, scale, '*');
       }
       atoms[i].force[0] += totalForceVector[0];
