@@ -365,7 +365,7 @@ class BoundaryBox {
             double vdWOverlap = atom.getVdWRadius() + atoms[k].getVdWRadius();
             if (distance < 1.00 * vdWOverlap) {  //Checking if the new atom will overlap with old, places far enough away to not triggere large forces
               overlap = true;
-              if(atoms.size() < 0) {
+              if(atoms.size() > 0) {
                 shuffleAtoms(atoms); //randomly moves atoms in box to free up space
               }
               break;
