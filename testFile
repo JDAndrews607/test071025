@@ -348,22 +348,24 @@ class BoundaryBox {
         averageAtomVolume +=  4.0/3.0 * pi * tempAtom.getVdWRadius() * tempAtom.getVdWRadius() * tempAtom.getVdWRadius() * proportions[i];
       }
       numberOfAtoms = this->boxVolume / averageAtomVolume;
-      numberOfAtoms = floor(0.6 * numberOfAtoms); //only take 60% to simulate amorphous close packing environment
+      numberOfAtoms = ceil(0.6 * numberOfAtoms); //only take 60% to simulate amorphous close packing environment
+      cout << numberOfAtoms << " atoms should be placed" << endl;
       cout << "Number of atoms: " << numberOfAtoms << endl;
 
       for (int i = 0; i < species.size(); i++) {
         int atomNum = static_cast<int>(numberOfAtoms * proportions[i] + 0.5); //round to nearest integer
         int j = 0;
         int placeAttempts = 0;
-        while (j < atomNum && placeAttempts < 1000) {
+        while (j < atomNum && placeAttempts < 100000) {  //placement attempts
           //atom placement loop begins
           bool overlap = false;
           Atom atom = Atom(species[i], randomCoordinate(xLow, xHigh), randomCoordinate(yLow, yHigh), randomCoordinate(zLow, zHigh));
           for (int k = 0; k < atoms.size(); k++) {
             float distance = calculateDistance(atom, atoms[k]);
             double vdWOverlap = atom.getVdWRadius() + atoms[k].getVdWRadius();
-            if (distance < 1.10 * vdWOverlap) {  //Checking if the new atom will overlap with old, places far enough away to not triggere large forces
+            if (distance < 1.00 * vdWOverlap) {  //Checking if the new atom will overlap with old, places far enough away to not triggere large forces
               overlap = true;
+              shuffleAtoms(atoms); //randomly moves atoms in box to free up space
               break;
             }
           }
@@ -422,7 +424,7 @@ class BoundaryBox {
         }
       }
     }
-    
+
 
     void initialVelocities(vector<Atom>& atoms, double temp) {
       //Using Maxwell-Boltzman Distribution
@@ -450,7 +452,29 @@ class BoundaryBox {
       }
     }
 
+  vector<double> getBoxBoundaries() {
+    vector<double> boxBoundaries = {xLow, xHigh, yLow, yHigh, zLow, zHigh};
+    return boxBoundaries;
+  }
+
   private:
+
+  void shuffleAtoms(vector<Atom>& atoms) {
+    int i = 0;
+    while(i < atoms.size()) {
+      atoms[i].coordinates[0] = randomCoordinate(xLow, xHigh);
+      atoms[i].coordinates[1] = randomCoordinate(yLow, yHigh);
+      atoms[i].coordinates[2] = randomCoordinate(zLow, zHigh);
+      for(int j = 0; j < atoms.size(); j++) {
+        if (i != j) {
+          double distance = calculateDistance(atoms[i], atoms[j]);
+          if(distance >= atoms[i].getVdWRadius() + atoms[j].getVdWRadius()) {
+            i++;
+          }
+        }
+      }
+    }
+  }
 
     double randomCoordinate(double low, double high) {
       uniform_real_distribution<> dis(low, high); //generates value between low and high
@@ -512,7 +536,7 @@ class BoundaryBox {
         avgAtomVolume += atomVolume * proportions[n];
       }
 
-      double boxVolume = atomNum * avgAtomVolume / 0.60;
+      double boxVolume = atomNum * avgAtomVolume;
       double boxSide = cbrt(boxVolume) * meterToAngstrom;
       xHigh = boxSide;
       xLow = 0;
@@ -764,13 +788,13 @@ void runMD_VelocityHalfStep(vector<Atom>& atoms, BoundaryBox& BoundaryBox, doubl
   int degOfFreedom = 3 * atoms.size();
   double timeConstant = 0; //Q, couple with dt
   if(BoundaryBox.getNumberOfAtoms() < 100) {
-    timeConstant = 5e-9;
-  }
-  else if(BoundaryBox.getNumberOfAtoms() < 1000) {
     timeConstant = 5e-10;
   }
-  else {
+  else if(BoundaryBox.getNumberOfAtoms() < 1000) {
     timeConstant = 5e-11;
+  }
+  else {
+    timeConstant = 5e-12;
   }
   cout << "Time Constant: " << timeConstant << endl;
   double thermMass = degOfFreedom * kB * systemTemp * timeConstant * timeConstant;
@@ -818,7 +842,7 @@ void runMD_VelocityHalfStep(vector<Atom>& atoms, BoundaryBox& BoundaryBox, doubl
       kineticEnergy = calculateKineticEnergy(atoms);
       thermostatVar += (dt / (2.0 * thermMass)) * (2.0 * kineticEnergy - degOfFreedom * kB * systemTemp);
     }
-    
+
     //updating velocities for half step kick. Set at half step with dt = 0.5
     calculateAccelerationsMD(atoms, thermostatVar);
     updateVelocitiesMD(atoms, 0.5, dt, systemTemp);
