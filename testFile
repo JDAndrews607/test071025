@@ -352,6 +352,7 @@ class BoundaryBox {
       cout << numberOfAtoms << " atoms should be placed" << endl;
       cout << "Number of atoms: " << numberOfAtoms << endl;
 
+      int placementCount = 0;
       for (int i = 0; i < species.size(); i++) {
         int atomNum = static_cast<int>(numberOfAtoms * proportions[i] + 0.5); //round to nearest integer
         int j = 0;
@@ -365,7 +366,7 @@ class BoundaryBox {
             double vdWOverlap = atom.getVdWRadius() + atoms[k].getVdWRadius();
             if (distance < 1.00 * vdWOverlap) {  //Checking if the new atom will overlap with old, places far enough away to not triggere large forces
               overlap = true;
-              if(atoms.size() > 0) {
+              if(j > 1) {   //if at least one atom has been placed
                 shuffleAtoms(atoms); //randomly moves atoms in box to free up space
               }
               break;
@@ -375,6 +376,8 @@ class BoundaryBox {
             atoms.push_back(atom);
             j++;
             placeAttempts = 0;
+            placementCount++;
+            cout << "Atom " << placementCount << " placed" << endl;
           }
           //atom placement loop ends
           placeAttempts++;
@@ -463,6 +466,7 @@ class BoundaryBox {
 
   void shuffleAtoms(vector<Atom>& atoms) {
     int i = 0;
+    /*
     while(i < atoms.size()) {
       atoms[i].coordinates[0] = randomCoordinate(xLow, xHigh);
       atoms[i].coordinates[1] = randomCoordinate(yLow, yHigh);
@@ -475,6 +479,10 @@ class BoundaryBox {
           }
         }
       }
+    }
+    */
+    for (int i = 0; i < atoms.size(); i++) {
+      atoms[i].coordinates[2] -= xHigh/100;
     }
   }
 
@@ -934,7 +942,7 @@ void calculateForcesMD(vector<Atom>& atoms) {
       double buckC = 0;
       double buckMagnitude = 0;
       vector<double> normalizedDistance = {0, 0, 0};
-      if (distance < 10.0 * meterToAngstrom) {  //buckinham cutoff
+      if (distance < 1e-10) {  //buckinham cutoff
         vector<double> buckinghamParameters = getBuckinghamParameters(atoms[i], atoms[j]);
         if (buckinghamParameters[1] != 0) { //prevents division by zero
           buckA = buckinghamParameters[0];
