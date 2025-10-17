@@ -479,7 +479,7 @@ def peakFind_EMG(timestamp, CD_Signal, targetTime, _lambda = 0.01, peakDeviation
     #calculate EMG values for each signal point
     updated_CD_Signal = []
     for i in peak_timestamp:
-        updated_CD_Signal.append(exponentialModifiedGaussian_EMG(i, mu, sigma, _lambda))
+        updated_CD_Signal.append(exponentialModifiedGaussian_EMG(i, mu, sigma, _lambda, area))
 
     plotChromatogram_EMG_overlap(timestamp, CD_Signal, peak_timestamp, updated_CD_Signal)
     return area
@@ -505,7 +505,7 @@ def fit_EMG(timestamp, CD_Signal, init_area, init_mu, init_sigma, init_lambda, s
         (init_mu - 2*init_sigma, init_mu + 2*init_sigma),     #for mu
         (0.1 * init_sigma, 5 * init_sigma),   #for sigma
         (0.001, 1.0),   #for lambda
-        (0.1 * init_area, 5 * init_area)   #for area
+        (0.1 * init_area, 10 * init_area)   #for area
     ]
     
     population_size = 15
@@ -586,20 +586,20 @@ def fit_EMG(timestamp, CD_Signal, init_area, init_mu, init_sigma, init_lambda, s
 #actual exponential modified gaussian equation
 def exponentialModifiedGaussian_EMG(x, mu, sigma, _lambda, area = 1):
     EMG_Front = _lambda/2 * eulersNumber**(_lambda/2 * (2*mu + _lambda*sigma**2 - 2*x))
-    erf = 0     #error function. Obtained from series shown below
-    erfc = 0    #1-erf(erfc_term)
+    #erf = 0     #error function. Obtained from series shown below
+    #erfc = 0    #1-erf(erfc_term)
     erfc_term = (mu + _lambda*sigma**2 - x) / (2**(1/2) * sigma)
     #Use Power Series Expansion of the Error Function
-    count = 0   #counter for erf power series
+    #count = 0   #counter for erf power series
     #finding erf(erfc_term) with a power series expansion
-    while count < 10: #takes series to ten terms:
-        erf += ( (-1)**count * erfc_term**(2*count+1) ) / ( factorial(count) * (2*count+1) )
-        count += 1
-    erfc = 1 - 2 / pi**(1/2) * erf
-    EMG_final = EMG_Front * erfc_Abramowitz__Stegun(erfc_term)      #straight line, slight downward trend left to right
+    #while count < 10: #takes series to ten terms:
+    #    erf += ( (-1)**count * erfc_term**(2*count+1) ) / ( factorial(count) * (2*count+1) )
+    #    count += 1
+    #erfc = 1 - 2 / pi**(1/2) * erf
+    #EMG_final = EMG_Front * erfc_Abramowitz__Stegun(erfc_term)      #straight line, slight downward trend left to right
     #EMG_final = EMG_Front * erfc        #definitely don't use
-    #EMG_final = area * EMG_Front * math.erfc(erfc_term)        #straight line
-    #EMG_final = area * EMG_Front * scipy.special.erfc(erfc_term)   #to control for broadcast issue. If removed, get rid of include scipy in program header
+    #EMG_final = area * EMG_Front * math.erfc(erfc_term)        #only works on scalars, not arrays
+    EMG_final = area * EMG_Front * scipy.special.erfc(erfc_term)   #to control for broadcast issue. If removed, get rid of include scipy in program header
 
     return EMG_final
 
