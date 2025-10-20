@@ -1,4 +1,3 @@
-
 ###Test data taken from IC1061, calibration curve from IC1056###
 
 
@@ -602,19 +601,7 @@ def fit_EMG(timestamp, CD_Signal, init_area, init_mu, init_sigma, init_lambda, s
 #actual exponential modified gaussian equation
 def exponentialModifiedGaussian_EMG(x, mu, sigma, _lambda, area = 1):
     EMG_Front = _lambda/2 * eulersNumber**(_lambda/2 * (2*mu + _lambda*sigma**2 - 2*x))
-    #erf = 0     #error function. Obtained from series shown below
-    #erfc = 0    #1-erf(erfc_term)
     erfc_term = (mu + _lambda*sigma**2 - x) / (2**(1/2) * sigma)
-    #Use Power Series Expansion of the Error Function
-    #count = 0   #counter for erf power series
-    #finding erf(erfc_term) with a power series expansion
-    #while count < 10: #takes series to ten terms:
-    #    erf += ( (-1)**count * erfc_term**(2*count+1) ) / ( factorial(count) * (2*count+1) )
-    #    count += 1
-    #erfc = 1 - 2 / pi**(1/2) * erf
-    #EMG_final = EMG_Front * erfc_Abramowitz__Stegun(erfc_term)      #straight line, slight downward trend left to right
-    #EMG_final = EMG_Front * erfc        #definitely don't use
-    #EMG_final = area * EMG_Front * math.erfc(erfc_term)        #only works on scalars, not arrays
     EMG_final = area * EMG_Front * scipy.special.erfc(erfc_term)   #to control for broadcast issue. If removed, get rid of include scipy in program header
 
     return EMG_final
